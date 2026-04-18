@@ -20,6 +20,6 @@
   "dependencies": {
     "expo": "^55.0.15",
     "expo-cli": "^6.3.12",
-    "react": "^19.2.5"
+    "react": "^19.2.0"
   }
 }
