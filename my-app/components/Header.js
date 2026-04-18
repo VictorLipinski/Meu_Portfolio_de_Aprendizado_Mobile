@@ -9,7 +9,7 @@ const Header = () => {
   return (
     <View style={styles.header}>
       <View style={styles.etiqueta}>
-        <Text style={styles.etiquetaTexto}>CATÁLOGO MUSICAL</Text>
+        <Text style={styles.etiquetaTexto}>PORTIFÓLIO MUSICAL</Text>
       </View>
 
       <Text style={styles.titulo}>
