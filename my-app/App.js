@@ -1,62 +1,35 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, ScrollView } from 'react-native';
-import AlbumCard from './components/AlbumCard';
-import Header from './components/Header';
-import { albuns } from './data/albuns';
+import 'react-native-gesture-handler';
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
 
+// Aqui nós avisamos ao App.js que as telas novas existem
+import ListaItens from './screens/ListaItens';
+import DetalhesItem from './screens/DetalhesItem';
+
+const Stack = createStackNavigator();
 
 export default function App() {
   return (
-    <ScrollView
-      style={styles.scrollViewContainer}
-      contentContainerStyle={styles.scrollConteudo}
-      showsVerticalScrollIndicator={false}
-    >
-      <Header />
-
-      {/* Lista dinâmica: um AlbumCard pra cada item do array 'albuns' */}
-      {albuns.map((album) => (
-        <AlbumCard
-          key={album.id}
-          nome={album.nome}
-          artista={album.artista}
-          ano={album.ano}
-          descricao={album.descricao}
-          genero={album.genero}
-          cor={album.cor}
-          icone={album.icone}
+    /* O NavigationContainer envolve todo o app para permitir a navegação */
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName="ListaItens">
+        
+        {/* Definimos a tela de entrada (Lista) */}
+        <Stack.Screen 
+          name="ListaItens" 
+          component={ListaItens} 
+          options={{ title: 'Meu Portfólio Musical' }} 
         />
-      ))}
 
-      {/* Rodapé */}
-      <View style={styles.rodape}>
-        <Text style={styles.rodapeTexto}>
-          🎧 Feito com React Native
-        </Text>
-      </View>
+        {/* Definimos a tela que mostra os detalhes */}
+        <Stack.Screen 
+          name="DetalhesItem" 
+          component={DetalhesItem} 
+          options={{ title: 'Detalhes do Álbum' }} 
+        />
 
-      {/* StatusBar clara porque o fundo é escuro */}
-      <StatusBar style="light" />
-    </ScrollView>
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  scrollViewContainer: {
-    flex: 1,
-    backgroundColor: '#0A0A0D',
-  },
-  scrollConteudo: {
-    paddingBottom: 24,
-  },
-  rodape: {
-    alignItems: 'center',
-    paddingTop: 24,
-    paddingBottom: 8,
-  },
-  rodapeTexto: {
-    color: '#5A5A62',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-});
