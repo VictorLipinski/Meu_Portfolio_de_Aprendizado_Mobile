@@ -1,16 +1,26 @@
-import { View } from "react-native";
-import { defaultStyles } from "@/styles/index";
-import { Stack } from "expo-router";
-import { StackScreenWithScearchBar } from "@/constants/layout";
+import { defaultStyles } from '@/styles/index'
+import { Stack } from 'expo-router'
+import { View } from 'react-native'
+import { colors } from '@/constants/token'
 
 const ArtistsScreenLayout = () => {
-    return(
-     <View style ={defaultStyles.container}>
-        <Stack>
-        <Stack.Screen name="index" options={{...StackScreenWithScearchBar, headerTitle: "Artistas"}}/>
-        </Stack>
-     </View>
-    )
+  return (
+    <View style={defaultStyles.container}>
+      <Stack
+        screenOptions={{
+          headerTintColor: colors.text,
+          headerStyle: { backgroundColor: colors.background },
+          headerShadowVisible: false,
+        }}
+      >
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="[artistId]"
+          options={{ title: 'Artista', headerShown: true }}
+        />
+      </Stack>
+    </View>
+  )
 }
 
 export default ArtistsScreenLayout
