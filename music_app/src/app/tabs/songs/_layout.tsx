@@ -16,7 +16,7 @@ const SongsScreenLayout = () => {
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen
           name="[albumId]"
-          options={{ title: 'Faixas', headerShown: true }}
+          options={{ title: 'Álbum', headerShown: true }}
         />
       </Stack>
     </View>

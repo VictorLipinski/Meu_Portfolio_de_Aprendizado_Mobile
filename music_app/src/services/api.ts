@@ -24,6 +24,13 @@ export async function searchAlbumsByArtist(artistName: string): Promise<Album[]>
   return data.album ?? []
 }
 
+export async function getAlbumById(albumId: string): Promise<Album | null> {
+  const data = await fetchFromAPI<{ album: Album[] | null }>(
+    `${BASE_URL}/album.php?m=${albumId}`
+  )
+  return data.album?.[0] ?? null
+}
+
 export async function getAlbumTracks(albumId: string): Promise<Track[]> {
   const data = await fetchFromAPI<{ track: Track[] | null }>(
     `${BASE_URL}/track.php?m=${albumId}`
