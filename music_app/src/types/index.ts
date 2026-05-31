@@ -28,3 +28,10 @@ export interface Track {
   strTrackThumb: string | null
   intTrackNumber: string | null
 }
+
+export interface Playlist {
+  id: string
+  name: string
+  albums: Album[]
+  createdAt: string
+}

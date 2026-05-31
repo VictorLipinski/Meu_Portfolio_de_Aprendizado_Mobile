@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import {
+  Alert,
   FlatList,
   Image,
   Pressable,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native'
 import { useLocalSearchParams, router, Stack } from 'expo-router'
@@ -13,6 +15,10 @@ import { Ionicons } from '@expo/vector-icons'
 import { getAlbumById, getAlbumTracks, getArtistById } from '@/services/api'
 import { LoadingView } from '@/components/LoadingView'
 import { EmptyState } from '@/components/EmptyState'
+import { FavoriteButton } from '@/components/FavoriteButton'
+import { PlaylistPickerModal } from '@/components/PlaylistPickerModal'
+import { useFavorites } from '@/hooks/useFavorites'
+import { usePlaylists } from '@/hooks/usePlaylists'
 import { Album, Artist, Track } from '@/types'
 import { colors } from '@/constants/token'
 
@@ -31,6 +37,12 @@ export default function AlbumDetailScreen() {
   const [tracks, setTracks] = useState<Track[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [playlistModal, setPlaylistModal] = useState(false)
+
+  const { isFavorite, toggleFavorite } = useFavorites()
+  const { playlists, createPlaylist, addAlbumToPlaylist } = usePlaylists()
+
+  const favored = album ? isFavorite(album.idAlbum) : false
 
   useEffect(() => {
     loadData()
@@ -41,7 +53,6 @@ export default function AlbumDetailScreen() {
       setLoading(true)
       setError(null)
 
-      // Fetch album details + tracks in parallel
       const [albumData, tracksData] = await Promise.all([
         getAlbumById(albumId),
         getAlbumTracks(albumId),
@@ -60,7 +71,6 @@ export default function AlbumDetailScreen() {
       )
       setTracks(sorted)
 
-      // Fetch artist biography — optional, fails gracefully
       if (albumData.idArtist) {
         const artistData = await getArtistById(albumData.idArtist).catch(() => null)
         setArtist(artistData)
@@ -70,6 +80,32 @@ export default function AlbumDetailScreen() {
     } finally {
       setLoading(false)
     }
+  }
+
+  async function handleToggleFavorite() {
+    if (!album) return
+    const added = await toggleFavorite(album)
+    Alert.alert(
+      added ? '❤️ Favoritado' : 'Removido',
+      added
+        ? `"${album.strAlbum}" foi adicionado aos seus favoritos.`
+        : `"${album.strAlbum}" foi removido dos favoritos.`
+    )
+  }
+
+  async function handleSelectPlaylist(playlistId: string) {
+    if (!album) return
+    await addAlbumToPlaylist(playlistId, album)
+    setPlaylistModal(false)
+    Alert.alert('Adicionado! ✓', `"${album.strAlbum}" foi adicionado à playlist.`)
+  }
+
+  async function handleCreateAndAdd(name: string) {
+    if (!album) return
+    const pl = await createPlaylist(name)
+    await addAlbumToPlaylist(pl.id, album)
+    setPlaylistModal(false)
+    Alert.alert('Criado! ✓', `Playlist "${pl.name}" criada com "${album.strAlbum}".`)
   }
 
   if (loading) {
@@ -95,18 +131,35 @@ export default function AlbumDetailScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: album.strAlbum }} />
+      <Stack.Screen
+        options={{
+          title: album.strAlbum,
+          headerRight: () => (
+            <FavoriteButton
+              isFavorite={favored}
+              onPress={handleToggleFavorite}
+              size={26}
+            />
+          ),
+        }}
+      />
+
       <FlatList
         data={tracks}
         keyExtractor={(item) => item.idTrack}
-        renderItem={({ item, index }) => (
-          <TrackRow item={item} index={index} />
-        )}
+        renderItem={({ item, index }) => <TrackRow item={item} index={index} />}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={styles.trackSeparator} />}
         ListHeaderComponent={
-          <AlbumHeader album={album} artist={artist} trackCount={tracks.length} />
+          <AlbumHeader
+            album={album}
+            artist={artist}
+            trackCount={tracks.length}
+            isFavorite={favored}
+            onToggleFavorite={handleToggleFavorite}
+            onOpenPlaylist={() => setPlaylistModal(true)}
+          />
         }
         ListEmptyComponent={
           <EmptyState
@@ -115,15 +168,24 @@ export default function AlbumDetailScreen() {
           />
         }
       />
+
+      {album && (
+        <PlaylistPickerModal
+          visible={playlistModal}
+          playlists={playlists}
+          currentAlbumId={album.idAlbum}
+          onClose={() => setPlaylistModal(false)}
+          onSelectPlaylist={handleSelectPlaylist}
+          onCreateAndAdd={handleCreateAndAdd}
+        />
+      )}
     </>
   )
 }
 
-// ─── Track Row ──────────────────────────────────────────────────────────────
+// ─── Track Row ───────────────────────────────────────────────────────────────
 
-type TrackRowProps = { item: Track; index: number }
-
-function TrackRow({ item, index }: TrackRowProps) {
+function TrackRow({ item, index }: { item: Track; index: number }) {
   return (
     <View style={styles.trackRow}>
       <Text style={styles.trackNumber}>{item.intTrackNumber ?? index + 1}</Text>
@@ -135,74 +197,83 @@ function TrackRow({ item, index }: TrackRowProps) {
   )
 }
 
-// ─── Album Header ────────────────────────────────────────────────────────────
+// ─── Album Header ─────────────────────────────────────────────────────────────
 
 type AlbumHeaderProps = {
   album: Album
   artist: Artist | null
   trackCount: number
+  isFavorite: boolean
+  onToggleFavorite: () => void
+  onOpenPlaylist: () => void
 }
 
-function AlbumHeader({ album, artist, trackCount }: AlbumHeaderProps) {
-  function handleArtistPress() {
-    router.push(`/tabs/artists/${album.idArtist}`)
-  }
-
+function AlbumHeader({
+  album,
+  artist,
+  trackCount,
+  isFavorite,
+  onToggleFavorite,
+  onOpenPlaylist,
+}: AlbumHeaderProps) {
   return (
     <View style={styles.header}>
-      {/* Capa do álbum */}
+      {/* Capa */}
       {album.strAlbumThumb ? (
         <Image source={{ uri: album.strAlbumThumb }} style={styles.cover} />
       ) : (
         <View style={[styles.cover, styles.coverPlaceholder]}>
-          <Ionicons
-            name="disc-outline"
-            size={56}
-            color={colors.primary}
-            style={{ opacity: 0.4 }}
-          />
+          <Ionicons name="disc-outline" size={56} color={colors.primary} style={{ opacity: 0.4 }} />
         </View>
       )}
 
-      {/* Nome do álbum */}
+      {/* Título */}
       <Text style={styles.albumTitle}>{album.strAlbum}</Text>
 
-      {/* Nome do artista — navega para o perfil */}
+      {/* Artista */}
       <Pressable
-        onPress={handleArtistPress}
-        style={({ pressed }) => [
-          styles.artistRow,
-          pressed && styles.artistRowPressed,
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel={`Ver perfil de ${album.strArtist}`}
+        onPress={() => router.push(`/tabs/artists/${album.idArtist}`)}
+        style={({ pressed }) => [styles.artistRow, pressed && styles.artistRowPressed]}
       >
         <Text style={styles.artistName}>{album.strArtist}</Text>
         <Ionicons name="chevron-forward" size={14} color={colors.primary} />
       </Pressable>
 
-      {/* Pills: ano, gênero, label */}
+      {/* Pills */}
       {(album.intYearReleased || album.strGenre || album.strLabel) ? (
         <View style={styles.pills}>
           {album.intYearReleased ? (
-            <View style={styles.pill}>
-              <Text style={styles.pillText}>{album.intYearReleased}</Text>
-            </View>
+            <View style={styles.pill}><Text style={styles.pillText}>{album.intYearReleased}</Text></View>
           ) : null}
           {album.strGenre ? (
-            <View style={styles.pill}>
-              <Text style={styles.pillText}>{album.strGenre}</Text>
-            </View>
+            <View style={styles.pill}><Text style={styles.pillText}>{album.strGenre}</Text></View>
           ) : null}
           {album.strLabel ? (
-            <View style={styles.pill}>
-              <Text style={styles.pillText}>{album.strLabel}</Text>
-            </View>
+            <View style={styles.pill}><Text style={styles.pillText}>{album.strLabel}</Text></View>
           ) : null}
         </View>
       ) : null}
 
-      {/* Biografia do artista */}
+      {/* Ações: Favoritar + Playlist */}
+      <View style={styles.actionsRow}>
+        <TouchableOpacity style={styles.actionBtn} onPress={onToggleFavorite} activeOpacity={0.7}>
+          <Ionicons
+            name={isFavorite ? 'heart' : 'heart-outline'}
+            size={20}
+            color={isFavorite ? '#E05A6A' : colors.textMuted}
+          />
+          <Text style={[styles.actionLabel, isFavorite && { color: '#E05A6A' }]}>
+            {isFavorite ? 'Favoritado' : 'Favoritar'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionBtn} onPress={onOpenPlaylist} activeOpacity={0.7}>
+          <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
+          <Text style={[styles.actionLabel, { color: colors.primary }]}>Playlist</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Bio do artista */}
       {artist?.strBiographyEN ? (
         <View style={styles.bioCard}>
           <Text style={styles.bioLabel}>Sobre o artista</Text>
@@ -212,7 +283,6 @@ function AlbumHeader({ album, artist, trackCount }: AlbumHeaderProps) {
         </View>
       ) : null}
 
-      {/* Cabeçalho da lista de faixas */}
       <Text style={styles.tracksHeader}>
         {trackCount} {trackCount === 1 ? 'faixa' : 'faixas'}
       </Text>
@@ -223,11 +293,8 @@ function AlbumHeader({ album, artist, trackCount }: AlbumHeaderProps) {
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  listContent: {
-    paddingBottom: 120,
-  },
+  listContent: { paddingBottom: 120 },
 
-  // Header
   header: {
     alignItems: 'center',
     paddingHorizontal: 24,
@@ -266,9 +333,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     borderRadius: 6,
   },
-  artistRowPressed: {
-    opacity: 0.55,
-  },
+  artistRowPressed: { opacity: 0.55 },
   artistName: {
     fontSize: 15,
     color: colors.primary,
@@ -293,7 +358,28 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Artist bio card
+  // Ações
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    backgroundColor: '#F7F9FF',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 24,
+  },
+  actionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textMuted,
+  },
+
+  // Bio
   bioCard: {
     width: '100%',
     backgroundColor: '#F7F9FF',
@@ -315,13 +401,14 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
 
-  // Tracks section
   tracksHeader: {
     fontSize: 13,
     color: colors.textMuted,
     alignSelf: 'flex-start',
     marginBottom: 4,
   },
+
+  // Track row
   trackRow: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -44,7 +44,7 @@ const TabsNavigation = () => {
       <Tabs.Screen
         name="playlist"
         options={{
-          title: 'Playlist',
+          title: 'Playlists',
           tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons name="playlist-play" size={26} color={color} />
           ),
@@ -62,6 +62,13 @@ const TabsNavigation = () => {
         options={{
           title: 'Artistas',
           tabBarIcon: ({ color }) => <FontAwesome6 name="users-line" size={20} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Perfil',
+          tabBarIcon: ({ color }) => <Ionicons name="person-outline" size={23} color={color} />,
         }}
       />
     </Tabs>

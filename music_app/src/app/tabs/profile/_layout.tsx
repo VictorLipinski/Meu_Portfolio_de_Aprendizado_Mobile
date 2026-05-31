@@ -3,7 +3,7 @@ import { Stack } from 'expo-router'
 import { View } from 'react-native'
 import { colors } from '@/constants/token'
 
-const PlaylistScreenLayout = () => {
+const ProfileScreenLayout = () => {
   return (
     <View style={defaultStyles.container}>
       <Stack
@@ -14,10 +14,9 @@ const PlaylistScreenLayout = () => {
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="[playlistId]" options={{ headerShown: true }} />
       </Stack>
     </View>
   )
 }
 
-export default PlaylistScreenLayout
+export default ProfileScreenLayout
