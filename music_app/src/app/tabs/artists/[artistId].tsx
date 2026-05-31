@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
-import { FlatList, Image, StyleSheet, Text, View } from 'react-native'
+import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useLocalSearchParams, router, Stack } from 'expo-router'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 
 import { getArtistById, getAlbumsByArtistId } from '@/services/api'
 import { AlbumCard } from '@/components/AlbumCard'
+import { ShowCard } from '@/components/ShowCard'
 import { LoadingView } from '@/components/LoadingView'
 import { EmptyState } from '@/components/EmptyState'
-import { Artist, Album } from '@/types'
+import { Artist, Album, Show } from '@/types'
 import { colors } from '@/constants/token'
+import showsData from '@/data/shows.json'
 
 export default function ArtistDetailScreen() {
   const { artistId } = useLocalSearchParams<{ artistId: string }>()
@@ -17,6 +18,9 @@ export default function ArtistDetailScreen() {
   const [albums, setAlbums] = useState<Album[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Shows filtrados para este artista — carregados localmente
+  const shows = (showsData as Show[]).filter((s) => s.artistId === artistId)
 
   useEffect(() => {
     loadData()
@@ -82,7 +86,17 @@ export default function ArtistDetailScreen() {
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={() => (
-          <ArtistHeader artist={artist} albumCount={albums.length} />
+          <ArtistHeader
+            artist={artist}
+            albumCount={albums.length}
+            shows={shows}
+            onOpenMap={() =>
+              router.push({
+                pathname: '/tabs/artists/shows-map',
+                params: { artistId },
+              })
+            }
+          />
         )}
         ListEmptyComponent={
           <EmptyState message="Nenhum álbum encontrado." icon="disc-outline" />
@@ -93,14 +107,19 @@ export default function ArtistDetailScreen() {
   )
 }
 
+// ─── ArtistHeader ─────────────────────────────────────────────────────────────
+
 type HeaderProps = {
   artist: Artist
   albumCount: number
+  shows: Show[]
+  onOpenMap: () => void
 }
 
-function ArtistHeader({ artist, albumCount }: HeaderProps) {
+function ArtistHeader({ artist, albumCount, shows, onOpenMap }: HeaderProps) {
   return (
     <View style={styles.header}>
+      {/* Foto */}
       {artist.strArtistThumb ? (
         <Image source={{ uri: artist.strArtistThumb }} style={styles.artistImage} />
       ) : (
@@ -109,8 +128,10 @@ function ArtistHeader({ artist, albumCount }: HeaderProps) {
         </View>
       )}
 
+      {/* Nome */}
       <Text style={styles.artistName}>{artist.strArtist}</Text>
 
+      {/* Tags */}
       <View style={styles.tags}>
         {artist.strGenre ? (
           <View style={styles.tag}>
@@ -129,18 +150,47 @@ function ArtistHeader({ artist, albumCount }: HeaderProps) {
         ) : null}
       </View>
 
+      {/* Biografia */}
       {artist.strBiographyEN ? (
         <Text style={styles.bio} numberOfLines={4}>
           {artist.strBiographyEN}
         </Text>
       ) : null}
 
+      {/* ── Seção Próximos Shows ───────────────────────────────────── */}
+      {shows.length > 0 ? (
+        <View style={styles.showsSection}>
+          {/* Cabeçalho da seção */}
+          <View style={styles.showsHeader}>
+            <Text style={styles.showsSectionTitle}>Próximos Shows</Text>
+            <TouchableOpacity
+              style={styles.mapBtn}
+              onPress={onOpenMap}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="map-outline" size={15} color={colors.primary} />
+              <Text style={styles.mapBtnText}>Ver no mapa</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Lista de shows */}
+          <View style={styles.showsList}>
+            {shows.map((show) => (
+              <ShowCard key={show.id} show={show} />
+            ))}
+          </View>
+        </View>
+      ) : null}
+
+      {/* Cabeçalho da discografia */}
       <Text style={styles.sectionTitle}>
         Discografia · {albumCount} {albumCount === 1 ? 'álbum' : 'álbuns'}
       </Text>
     </View>
   )
 }
+
+// ─── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   list: {
@@ -152,6 +202,8 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 16,
   },
+
+  // Foto do artista
   artistImage: {
     width: 120,
     height: 120,
@@ -163,6 +215,8 @@ const styles = StyleSheet.create({
   placeholderImage: {
     backgroundColor: '#E8EEFF',
   },
+
+  // Nome e tags
   artistName: {
     fontSize: 24,
     fontWeight: '800',
@@ -187,6 +241,8 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
   },
+
+  // Bio
   bio: {
     fontSize: 14,
     color: colors.textMuted,
@@ -194,6 +250,42 @@ const styles = StyleSheet.create({
     marginTop: 14,
     lineHeight: 20,
   },
+
+  // Shows section
+  showsSection: {
+    alignSelf: 'stretch',
+    marginTop: 24,
+  },
+  showsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  showsSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  mapBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#EFF3FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  mapBtnText: {
+    fontSize: 13,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  showsList: {
+    gap: 10,
+  },
+
+  // Discografia
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
@@ -202,6 +294,8 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 4,
   },
+
+  // Separador de álbuns
   separator: {
     height: 1,
     backgroundColor: '#F0F4FF',

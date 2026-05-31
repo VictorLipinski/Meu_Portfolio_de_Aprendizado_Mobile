@@ -35,3 +35,14 @@ export interface Playlist {
   albums: Album[]
   createdAt: string
 }
+
+export interface Show {
+  id: string
+  artistId: string
+  artistName: string
+  venue: string
+  city: string
+  date: string
+  latitude: number
+  longitude: number
+}

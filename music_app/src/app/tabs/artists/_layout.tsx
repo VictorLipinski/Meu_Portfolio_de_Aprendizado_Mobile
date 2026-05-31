@@ -18,6 +18,10 @@ const ArtistsScreenLayout = () => {
           name="[artistId]"
           options={{ title: 'Artista', headerShown: true }}
         />
+        <Stack.Screen
+          name="shows-map"
+          options={{ title: 'Shows no Mapa', headerShown: true }}
+        />
       </Stack>
     </View>
   )
