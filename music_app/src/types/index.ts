@@ -46,3 +46,20 @@ export interface Show {
   latitude: number
   longitude: number
 }
+
+export interface User {
+  id: string
+  name: string
+  email: string
+  password: string   // plain text — armazenamento local apenas, sem backend real
+  createdAt: string
+}
+
+export interface Comment {
+  id: string
+  albumId: string
+  userId: string
+  userName: string
+  comment: string
+  createdAt: string
+}
