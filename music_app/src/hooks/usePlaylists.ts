@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useCallback, useEffect, useState } from 'react'
-import { Album, Playlist } from '@/types'
+import { Playlist, PlaylistSong } from '@/types'
 
 const STORAGE_KEY = '@noomi:playlists'
 
@@ -15,7 +15,17 @@ export function usePlaylists() {
   const load = useCallback(async () => {
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY)
-      setPlaylists(raw ? JSON.parse(raw) : [])
+      if (raw) {
+        const parsed: Playlist[] = JSON.parse(raw)
+        // Migração: playlists antigas com campo `albums` viram `songs: []`
+        const migrated = parsed.map((p: any) => ({
+          ...p,
+          songs: p.songs ?? [],
+        }))
+        setPlaylists(migrated)
+      } else {
+        setPlaylists([])
+      }
     } catch {
       // silently ignore
     } finally {
@@ -36,7 +46,7 @@ export function usePlaylists() {
     const newPlaylist: Playlist = {
       id: makeId(),
       name: name.trim(),
-      albums: [],
+      songs: [],
       createdAt: new Date().toISOString(),
     }
     await persist([newPlaylist, ...playlists])
@@ -53,22 +63,24 @@ export function usePlaylists() {
     )
   }
 
-  async function addAlbumToPlaylist(playlistId: string, album: Album) {
+  /** Adiciona uma música à playlist; ignora duplicatas */
+  async function addSongToPlaylist(playlistId: string, song: PlaylistSong) {
     await persist(
       playlists.map((p) => {
         if (p.id !== playlistId) return p
-        const alreadyIn = p.albums.some((a) => a.idAlbum === album.idAlbum)
+        const alreadyIn = p.songs.some((s) => s.songId === song.songId)
         if (alreadyIn) return p
-        return { ...p, albums: [...p.albums, album] }
+        return { ...p, songs: [...p.songs, song] }
       })
     )
   }
 
-  async function removeAlbumFromPlaylist(playlistId: string, albumId: string) {
+  /** Remove uma música da playlist pelo songId */
+  async function removeSongFromPlaylist(playlistId: string, songId: string) {
     await persist(
       playlists.map((p) =>
         p.id === playlistId
-          ? { ...p, albums: p.albums.filter((a) => a.idAlbum !== albumId) }
+          ? { ...p, songs: p.songs.filter((s) => s.songId !== songId) }
           : p
       )
     )
@@ -78,8 +90,16 @@ export function usePlaylists() {
     return playlists.find((p) => p.id === id)
   }
 
-  function isInPlaylist(playlistId: string, albumId: string): boolean {
-    return playlists.find((p) => p.id === playlistId)?.albums.some((a) => a.idAlbum === albumId) ?? false
+  /** Verifica se uma música já está em qualquer playlist */
+  function isSongInAnyPlaylist(songId: string): boolean {
+    return playlists.some((p) => p.songs.some((s) => s.songId === songId))
+  }
+
+  /** Verifica se uma música está em uma playlist específica */
+  function isSongInPlaylist(playlistId: string, songId: string): boolean {
+    return (
+      playlists.find((p) => p.id === playlistId)?.songs.some((s) => s.songId === songId) ?? false
+    )
   }
 
   return {
@@ -89,9 +109,10 @@ export function usePlaylists() {
     createPlaylist,
     deletePlaylist,
     renamePlaylist,
-    addAlbumToPlaylist,
-    removeAlbumFromPlaylist,
+    addSongToPlaylist,
+    removeSongFromPlaylist,
     getPlaylist,
-    isInPlaylist,
+    isSongInPlaylist,
+    isSongInAnyPlaylist,
   }
 }

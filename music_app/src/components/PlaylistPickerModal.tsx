@@ -15,7 +15,7 @@ import { Playlist } from '@/types'
 type Props = {
   visible: boolean
   playlists: Playlist[]
-  currentAlbumId: string
+  currentSongId: string        // ← era currentAlbumId
   onClose: () => void
   onSelectPlaylist: (playlistId: string) => void
   onCreateAndAdd: (name: string) => void
@@ -24,7 +24,7 @@ type Props = {
 export function PlaylistPickerModal({
   visible,
   playlists,
-  currentAlbumId,
+  currentSongId,
   onClose,
   onSelectPlaylist,
   onCreateAndAdd,
@@ -47,14 +47,11 @@ export function PlaylistPickerModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      {/* Dimmed backdrop */}
       <TouchableOpacity style={styles.overlay} onPress={handleClose} activeOpacity={1}>
-        {/* Sheet — absorbs taps so backdrop doesn't close on inner press */}
         <TouchableOpacity style={styles.sheet} activeOpacity={1}>
           <View style={styles.handle} />
           <Text style={styles.title}>Adicionar à Playlist</Text>
 
-          {/* ── Create new ─────────────────────────── */}
           {creating ? (
             <View style={styles.createRow}>
               <TextInput
@@ -84,7 +81,6 @@ export function PlaylistPickerModal({
 
           <View style={styles.divider} />
 
-          {/* ── Existing playlists ──────────────────── */}
           {playlists.length === 0 ? (
             <Text style={styles.empty}>Nenhuma playlist criada ainda.</Text>
           ) : (
@@ -94,7 +90,9 @@ export function PlaylistPickerModal({
               style={{ maxHeight: 260 }}
               showsVerticalScrollIndicator={false}
               renderItem={({ item }) => {
-                const added = item.albums.some((a) => a.idAlbum === currentAlbumId)
+                // ← verifica por songId agora
+                const added = item.songs.some((s) => s.songId === currentSongId)
+                const count = item.songs.length
                 return (
                   <TouchableOpacity
                     style={styles.playlistRow}
@@ -113,8 +111,7 @@ export function PlaylistPickerModal({
                         {item.name}
                       </Text>
                       <Text style={styles.playlistCount}>
-                        {item.albums.length}{' '}
-                        {item.albums.length === 1 ? 'álbum' : 'álbuns'}
+                        {count} {count === 1 ? 'música' : 'músicas'}
                       </Text>
                     </View>
                     {added && (
@@ -195,19 +192,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
   },
-  confirmBtnDisabled: {
-    opacity: 0.4,
-  },
-  confirmBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#F0F4FF',
-    marginVertical: 12,
-  },
+  confirmBtnDisabled: { opacity: 0.4 },
+  confirmBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  divider: { height: 1, backgroundColor: '#F0F4FF', marginVertical: 12 },
   empty: {
     fontSize: 14,
     color: colors.textMuted,
@@ -229,17 +216,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   playlistInfo: { flex: 1 },
-  playlistName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.text,
-  },
+  playlistName: { fontSize: 15, fontWeight: '600', color: colors.text },
   playlistNameMuted: { color: colors.textMuted },
-  playlistCount: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
+  playlistCount: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
   cancelBtn: {
     marginTop: 16,
     paddingVertical: 14,
@@ -247,9 +226,5 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0F4FF',
     alignItems: 'center',
   },
-  cancelText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.text,
-  },
+  cancelText: { fontSize: 15, fontWeight: '600', color: colors.text },
 })

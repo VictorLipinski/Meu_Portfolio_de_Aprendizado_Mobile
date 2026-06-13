@@ -4,9 +4,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { router, Stack, useSegments } from 'expo-router'
 
 import { AuthProvider, useAuth } from '@/context/AuthContext'
+import { MusicPlayerProvider } from '@/context/MusicPlayerContext'
 
 // ─── Redirect guard ───────────────────────────────────────────────────────────
-// Se já existe sessão e o usuário ainda está na tela de login, redireciona.
 function RootNavigation() {
   const { user, loading } = useAuth()
   const segments = useSegments()
@@ -24,6 +24,14 @@ function RootNavigation() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="singup" options={{ headerShown: false }} />
       <Stack.Screen name="tabs" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="player"
+        options={{
+          headerShown: false,
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+        }}
+      />
     </Stack>
   )
 }
@@ -33,7 +41,9 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <RootNavigation />
+        <MusicPlayerProvider>
+          <RootNavigation />
+        </MusicPlayerProvider>
       </AuthProvider>
       <StatusBar style="auto" />
     </SafeAreaProvider>

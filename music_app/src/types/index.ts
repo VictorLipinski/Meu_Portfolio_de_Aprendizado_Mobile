@@ -29,10 +29,20 @@ export interface Track {
   intTrackNumber: string | null
 }
 
+/** Música individual salva em uma playlist */
+export interface PlaylistSong {
+  songId: string        // Track.idTrack
+  songName: string      // Track.strTrack
+  artistName: string    // Album.strArtist
+  albumId: string       // Album.idAlbum
+  albumName: string     // Album.strAlbum
+  albumCover: string | null  // Album.strAlbumThumb
+}
+
 export interface Playlist {
   id: string
   name: string
-  albums: Album[]
+  songs: PlaylistSong[]   // ← músicas individuais (antes: albums: Album[])
   createdAt: string
 }
 
@@ -51,7 +61,7 @@ export interface User {
   id: string
   name: string
   email: string
-  password: string   // plain text — armazenamento local apenas, sem backend real
+  password: string
   createdAt: string
 }
 
@@ -62,4 +72,14 @@ export interface Comment {
   userName: string
   comment: string
   createdAt: string
+}
+
+/** Lembrete de álbum agendado via expo-notifications */
+export interface AlbumReminder {
+  id: string              // id local
+  notificationId: string  // identificador retornado pelo expo-notifications
+  albumId: string
+  albumName: string
+  artistName: string
+  scheduledFor: string    // ISO string do momento agendado
 }

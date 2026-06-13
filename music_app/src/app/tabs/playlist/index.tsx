@@ -124,7 +124,7 @@ type PlaylistRowProps = {
 }
 
 function PlaylistRow({ playlist, onPress, onRename, onDelete }: PlaylistRowProps) {
-  const count = playlist.albums.length
+  const count = playlist.songs.length
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.rowIcon}>
@@ -135,7 +135,7 @@ function PlaylistRow({ playlist, onPress, onRename, onDelete }: PlaylistRowProps
           {playlist.name}
         </Text>
         <Text style={styles.rowCount}>
-          {count} {count === 1 ? 'álbum' : 'álbuns'}
+          {count} {count === 1 ? 'música' : 'músicas'}
         </Text>
       </View>
       <TouchableOpacity onPress={onRename} style={styles.iconBtn} hitSlop={8}>
