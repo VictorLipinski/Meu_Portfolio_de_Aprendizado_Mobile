@@ -1,0 +1,42 @@
+[
+  {
+    "id": "cmt-seed-001",
+    "albumId": "2116026",
+    "userId": "user-seed",
+    "userName": "Admin Noomi",
+    "comment": "Um dos melhores álbuns do Coldplay! Music of the Spheres é incrível.",
+    "createdAt": "2025-01-10T10:00:00.000Z"
+  },
+  {
+    "id": "cmt-seed-002",
+    "albumId": "2116026",
+    "userId": "user-seed",
+    "userName": "Admin Noomi",
+    "comment": "Higher Power é a minha faixa favorita deste álbum.",
+    "createdAt": "2025-01-11T14:30:00.000Z"
+  },
+  {
+    "id": "cmt-seed-003",
+    "albumId": "2116350",
+    "userId": "user-seed",
+    "userName": "Admin Noomi",
+    "comment": "Ghost Stories tem uma atmosfera única. True Love é perfeita.",
+    "createdAt": "2025-01-12T09:15:00.000Z"
+  },
+  {
+    "id": "cmt-seed-004",
+    "albumId": "2116350",
+    "userId": "user-seed",
+    "userName": "Admin Noomi",
+    "comment": "Ouço esse álbum inteiro quando quero relaxar.",
+    "createdAt": "2025-01-13T20:00:00.000Z"
+  },
+  {
+    "id": "cmt-seed-005",
+    "albumId": "2116240",
+    "userId": "user-seed",
+    "userName": "Admin Noomi",
+    "comment": "Imagine Dragons nunca decepcionam. Álbum sólido do início ao fim.",
+    "createdAt": "2025-01-14T16:45:00.000Z"
+  }
+]

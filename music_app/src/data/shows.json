@@ -1,0 +1,162 @@
+[
+  {
+    "id": "show-001",
+    "artistId": "111239",
+    "artistName": "Coldplay",
+    "venue": "Estádio Nilton Santos",
+    "city": "Rio de Janeiro, Brasil",
+    "date": "2025-10-18",
+    "latitude": -22.9122,
+    "longitude": -43.2302
+  },
+  {
+    "id": "show-002",
+    "artistId": "111239",
+    "artistName": "Coldplay",
+    "venue": "MorumBis",
+    "city": "São Paulo, Brasil",
+    "date": "2025-10-22",
+    "latitude": -23.6003,
+    "longitude": -46.7195
+  },
+  {
+    "id": "show-003",
+    "artistId": "111239",
+    "artistName": "Coldplay",
+    "venue": "Estadio River Plate",
+    "city": "Buenos Aires, Argentina",
+    "date": "2025-10-29",
+    "latitude": -34.5453,
+    "longitude": -58.4494
+  },
+  {
+    "id": "show-004",
+    "artistId": "111239",
+    "artistName": "Coldplay",
+    "venue": "Wembley Stadium",
+    "city": "Londres, Reino Unido",
+    "date": "2025-11-15",
+    "latitude": 51.556,
+    "longitude": -0.2796
+  },
+  {
+    "id": "show-005",
+    "artistId": "111043",
+    "artistName": "Taylor Swift",
+    "venue": "Allianz Parque",
+    "city": "São Paulo, Brasil",
+    "date": "2025-11-03",
+    "latitude": -23.5268,
+    "longitude": -46.6776
+  },
+  {
+    "id": "show-006",
+    "artistId": "111043",
+    "artistName": "Taylor Swift",
+    "venue": "Estadio Monumental",
+    "city": "Santiago, Chile",
+    "date": "2025-11-08",
+    "latitude": -33.4552,
+    "longitude": -70.6105
+  },
+  {
+    "id": "show-007",
+    "artistId": "111043",
+    "artistName": "Taylor Swift",
+    "venue": "Madison Square Garden",
+    "city": "Nova York, EUA",
+    "date": "2025-12-01",
+    "latitude": 40.7505,
+    "longitude": -73.9934
+  },
+  {
+    "id": "show-008",
+    "artistId": "152140",
+    "artistName": "Imagine Dragons",
+    "venue": "Arena Jeunesse",
+    "city": "Rio de Janeiro, Brasil",
+    "date": "2025-09-20",
+    "latitude": -22.9822,
+    "longitude": -43.3619
+  },
+  {
+    "id": "show-009",
+    "artistId": "152140",
+    "artistName": "Imagine Dragons",
+    "venue": "Crypto.com Arena",
+    "city": "Los Angeles, EUA",
+    "date": "2025-10-05",
+    "latitude": 34.043,
+    "longitude": -118.2673
+  },
+  {
+    "id": "show-010",
+    "artistId": "152140",
+    "artistName": "Imagine Dragons",
+    "venue": "T-Mobile Arena",
+    "city": "Las Vegas, EUA",
+    "date": "2025-10-12",
+    "latitude": 36.1028,
+    "longitude": -115.1785
+  },
+  {
+    "id": "show-011",
+    "artistId": "112030",
+    "artistName": "Ed Sheeran",
+    "venue": "Parque Olímpico",
+    "city": "Rio de Janeiro, Brasil",
+    "date": "2025-11-20",
+    "latitude": -22.976,
+    "longitude": -43.3956
+  },
+  {
+    "id": "show-012",
+    "artistId": "112030",
+    "artistName": "Ed Sheeran",
+    "venue": "Olympic Stadium",
+    "city": "Londres, Reino Unido",
+    "date": "2025-09-14",
+    "latitude": 51.5386,
+    "longitude": -0.0169
+  },
+  {
+    "id": "show-013",
+    "artistId": "112030",
+    "artistName": "Ed Sheeran",
+    "venue": "ANZ Stadium",
+    "city": "Sydney, Austrália",
+    "date": "2025-12-10",
+    "latitude": -33.8474,
+    "longitude": 151.0633
+  },
+  {
+    "id": "show-014",
+    "artistId": "111352",
+    "artistName": "Arctic Monkeys",
+    "venue": "Lollapalooza Brasil",
+    "city": "São Paulo, Brasil",
+    "date": "2026-03-28",
+    "latitude": -23.7014,
+    "longitude": -46.6977
+  },
+  {
+    "id": "show-015",
+    "artistId": "111352",
+    "artistName": "Arctic Monkeys",
+    "venue": "O2 Arena",
+    "city": "Londres, Reino Unido",
+    "date": "2026-02-14",
+    "latitude": 51.5033,
+    "longitude": 0.003
+  },
+  {
+    "id": "show-016",
+    "artistId": "111352",
+    "artistName": "Arctic Monkeys",
+    "venue": "Coachella Valley Music Festival",
+    "city": "Indio, EUA",
+    "date": "2026-04-11",
+    "latitude": 33.6823,
+    "longitude": -116.2378
+  }
+]
