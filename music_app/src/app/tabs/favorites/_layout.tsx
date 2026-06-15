@@ -13,7 +13,7 @@ const FavoritesScreenLayout = () => {
           headerShadowVisible: false,
         }}
       >
-        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="index" options={{ title: '', headerShown: false, headerBackButtonDisplayMode: 'minimal' }} />
       </Stack>
     </View>
   )

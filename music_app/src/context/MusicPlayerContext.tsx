@@ -3,9 +3,15 @@
  * ──────────────────
  * Estado central do player de música. Gerencia:
  *  - faixa atual (track + metadados do álbum)
- *  - lista de faixas (queue) do álbum em reprodução
+ *  - fila de reprodução (queue) — cada item carrega seu PRÓPRIO par
+ *    { track, album }, permitindo que a fila venha de um único álbum
+ *    (telas de álbum) OU misture músicas de álbuns diferentes (playlists)
  *  - estado play/pause
  *  - progresso simulado (sem streaming real)
+ *
+ * IMPORTANTE: `play()` mantém a assinatura original (usada pelas telas
+ * de álbum). `playQueue()` é a nova API genérica usada por playlists —
+ * ambas alimentam o MESMO estado interno, sem sistema paralelo.
  */
 
 import {
@@ -16,7 +22,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { Album, Track } from '@/types'
+import { Album, PlaylistSong, Track } from '@/types'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -28,8 +34,8 @@ export interface NowPlayingTrack {
 interface MusicPlayerContextData {
   /** Faixa + álbum atualmente selecionados */
   nowPlaying: NowPlayingTrack | null
-  /** Lista de faixas do álbum em reprodução (queue) */
-  queue: Track[]
+  /** Fila de reprodução — cada item já contém seu próprio álbum */
+  queue: NowPlayingTrack[]
   /** Índice da faixa atual dentro da queue */
   currentIndex: number
   /** Estado de reprodução */
@@ -39,8 +45,10 @@ interface MusicPlayerContextData {
   /** Duração simulada em segundos */
   duration: number
 
-  /** Inicia reprodução de uma faixa dentro de um álbum com sua queue */
+  /** Inicia reprodução de uma faixa dentro de um álbum com sua queue (todas as faixas compartilham o mesmo álbum) */
   play: (track: Track, album: Album, tracks: Track[]) => void
+  /** Inicia reprodução de uma fila genérica (ex.: playlist), cada item com seu próprio álbum */
+  playQueue: (items: NowPlayingTrack[], startIndex?: number) => void
   /** Alterna play/pause */
   togglePlay: () => void
   /** Próxima faixa */
@@ -72,11 +80,44 @@ function simulateDuration(track: Track): number {
   return 150 + (seed % 135) // 150s–285s
 }
 
+/**
+ * Converte uma música salva em playlist (PlaylistSong) para o formato
+ * NowPlayingTrack usado pelo player global. Permite que a fila de uma
+ * playlist contenha faixas de álbuns/artistas diferentes, cada uma com
+ * sua própria capa/artista/nome exibidos no MiniPlayer e no Now Playing.
+ *
+ * `idArtist` fica vazio (não é salvo em PlaylistSong) — telas que navegam
+ * para o perfil do artista a partir do player devem tratar esse caso.
+ */
+export function playlistSongToNowPlaying(song: PlaylistSong): NowPlayingTrack {
+  return {
+    track: {
+      idTrack: song.songId,
+      idAlbum: song.albumId,
+      strTrack: song.songName,
+      intDuration: null,
+      strTrackThumb: song.albumCover,
+      intTrackNumber: null,
+    },
+    album: {
+      idAlbum: song.albumId,
+      idArtist: '',
+      strAlbum: song.albumName,
+      strArtist: song.artistName,
+      strAlbumThumb: song.albumCover,
+      intYearReleased: null,
+      strGenre: null,
+      strDescriptionEN: null,
+      strLabel: null,
+    },
+  }
+}
+
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function MusicPlayerProvider({ children }: { children: React.ReactNode }) {
   const [nowPlaying, setNowPlaying] = useState<NowPlayingTrack | null>(null)
-  const [queue, setQueue] = useState<Track[]>([])
+  const [queue, setQueue] = useState<NowPlayingTrack[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -122,14 +163,16 @@ export function MusicPlayerProvider({ children }: { children: React.ReactNode })
     }
   }, [progress, duration, isPlaying, queue.length])
 
-  // Sincroniza nowPlaying quando currentIndex muda (mas queue/álbum já estão setados)
+  // Sincroniza nowPlaying quando currentIndex ou a queue mudam.
+  // Cada item da queue já é um NowPlayingTrack completo ({track, album}),
+  // então tanto faixas do mesmo álbum (play) quanto faixas de álbuns
+  // diferentes (playQueue/playlist) são tratadas de forma idêntica.
   useEffect(() => {
     if (queue.length === 0) return
-    const track = queue[currentIndex]
-    if (!track) return
-    // Mantém o álbum atual (só muda a faixa)
-    setNowPlaying((prev) => (prev ? { track, album: prev.album } : null))
-    const dur = simulateDuration(track)
+    const item = queue[currentIndex]
+    if (!item) return
+    setNowPlaying(item)
+    const dur = simulateDuration(item.track)
     setDuration(dur)
     setProgress(0)
     if (isPlaying) startTimer(dur)
@@ -151,17 +194,24 @@ export function MusicPlayerProvider({ children }: { children: React.ReactNode })
 
   // ── Ações públicas ────────────────────────────────────────────────────────
 
+  /** Reproduz uma faixa de um álbum — todas as faixas da queue compartilham o mesmo `album`. */
   function play(track: Track, album: Album, tracks: Track[]) {
+    const items: NowPlayingTrack[] = tracks.map((t) => ({ track: t, album }))
     const idx = tracks.findIndex((t) => t.idTrack === track.idTrack)
     clearTimer()
-    setQueue(tracks)
+    setQueue(items)
     setCurrentIndex(idx >= 0 ? idx : 0)
-    setNowPlaying({ track, album })
-    const dur = simulateDuration(track)
-    setDuration(dur)
-    setProgress(0)
     setIsPlaying(true)
-    startTimer(dur)
+  }
+
+  /** Reproduz uma fila genérica (ex.: playlist) — cada item já traz seu próprio álbum. */
+  function playQueue(items: NowPlayingTrack[], startIndex: number = 0) {
+    if (items.length === 0) return
+    clearTimer()
+    const safeIndex = Math.max(0, Math.min(startIndex, items.length - 1))
+    setQueue(items)
+    setCurrentIndex(safeIndex)
+    setIsPlaying(true)
   }
 
   function togglePlay() {
@@ -205,6 +255,7 @@ export function MusicPlayerProvider({ children }: { children: React.ReactNode })
         progress,
         duration,
         play,
+        playQueue,
         togglePlay,
         next,
         previous,

@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Playlist, PlaylistSong } from '@/types'
 
 const STORAGE_KEY = '@noomi:playlists'
@@ -12,6 +12,14 @@ export function usePlaylists() {
   const [playlists, setPlaylists] = useState<Playlist[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Espelha `playlists` de forma síncrona. Necessário porque algumas telas
+  // (ex.: "criar playlist e já adicionar a música") chamam duas mutações em
+  // sequência (createPlaylist → addSongToPlaylist) no mesmo ciclo assíncrono,
+  // antes do React re-renderizar com o novo `playlists`. Sem o ref, a segunda
+  // mutação leria o array ANTIGO (sem a playlist recém-criada) e o persist()
+  // dela sobrescreveria o AsyncStorage, apagando a playlist criada no passo 1.
+  const playlistsRef = useRef<Playlist[]>([])
+
   const load = useCallback(async () => {
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY)
@@ -22,8 +30,10 @@ export function usePlaylists() {
           ...p,
           songs: p.songs ?? [],
         }))
+        playlistsRef.current = migrated
         setPlaylists(migrated)
       } else {
+        playlistsRef.current = []
         setPlaylists([])
       }
     } catch {
@@ -38,6 +48,7 @@ export function usePlaylists() {
   }, [load])
 
   async function persist(updated: Playlist[]) {
+    playlistsRef.current = updated
     setPlaylists(updated)
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
   }
@@ -49,24 +60,24 @@ export function usePlaylists() {
       songs: [],
       createdAt: new Date().toISOString(),
     }
-    await persist([newPlaylist, ...playlists])
+    await persist([newPlaylist, ...playlistsRef.current])
     return newPlaylist
   }
 
   async function deletePlaylist(playlistId: string) {
-    await persist(playlists.filter((p) => p.id !== playlistId))
+    await persist(playlistsRef.current.filter((p) => p.id !== playlistId))
   }
 
   async function renamePlaylist(playlistId: string, newName: string) {
     await persist(
-      playlists.map((p) => (p.id === playlistId ? { ...p, name: newName.trim() } : p))
+      playlistsRef.current.map((p) => (p.id === playlistId ? { ...p, name: newName.trim() } : p))
     )
   }
 
   /** Adiciona uma música à playlist; ignora duplicatas */
   async function addSongToPlaylist(playlistId: string, song: PlaylistSong) {
     await persist(
-      playlists.map((p) => {
+      playlistsRef.current.map((p) => {
         if (p.id !== playlistId) return p
         const alreadyIn = p.songs.some((s) => s.songId === song.songId)
         if (alreadyIn) return p
@@ -78,7 +89,7 @@ export function usePlaylists() {
   /** Remove uma música da playlist pelo songId */
   async function removeSongFromPlaylist(playlistId: string, songId: string) {
     await persist(
-      playlists.map((p) =>
+      playlistsRef.current.map((p) =>
         p.id === playlistId
           ? { ...p, songs: p.songs.filter((s) => s.songId !== songId) }
           : p

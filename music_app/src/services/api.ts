@@ -51,3 +51,36 @@ export async function getAlbumsByArtistId(artistId: string): Promise<Album[]> {
   )
   return data.album ?? []
 }
+
+// ─── Track enriquecida com dados do álbum ─────────────────────────────────────
+
+/** Faixa com referência ao álbum a que pertence */
+export interface TrackWithAlbum extends Track {
+  album: Album
+}
+
+/**
+ * Busca faixas para adicionar a uma playlist.
+ *
+ * A API gratuita da TheAudioDB não possui endpoint de busca por nome de faixa.
+ * Estratégia: busca álbuns pelo termo (artista/álbum) e obtém as faixas
+ * de cada álbum em paralelo via Promise.allSettled (tolera falhas individuais).
+ */
+export async function searchTracksForPlaylist(query: string): Promise<TrackWithAlbum[]> {
+  const q = query.trim()
+  if (!q) return []
+
+  const albums = await searchAlbumsByArtist(q)
+  const topAlbums = albums.slice(0, 5)
+
+  if (topAlbums.length === 0) return []
+
+  const settled = await Promise.allSettled(
+    topAlbums.map(async (album) => {
+      const tracks = await getAlbumTracks(album.idAlbum)
+      return tracks.map((t): TrackWithAlbum => ({ ...t, album }))
+    })
+  )
+
+  return settled.flatMap((r) => (r.status === 'fulfilled' ? r.value : []))
+}

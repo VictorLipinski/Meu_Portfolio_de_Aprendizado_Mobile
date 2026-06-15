@@ -2,17 +2,19 @@
  * Now Playing Screen — app/player/index.tsx
  * ──────────────────────────────────────────
  * Tela expandida de reprodução. Inspirada em Apple Music / Spotify.
- * Usa MusicPlayerContext (sem duplicar estado).
- * Integra: favoritos, playlists e lembretes já existentes.
+ * - Usa MusicPlayerContext (sem duplicar estado)
+ * - Curtida de MÚSICA individual via useLikedSongs
+ * - Capa anima tamanho conforme play/pause (igual ao Apple Music)
+ * - Barra de progresso com touch + drag via responder system
+ * - Info do álbum (ano, gênero) abaixo dos controles
  */
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Alert,
   Animated,
   Dimensions,
   Image,
-  PanResponder,
   Pressable,
   StyleSheet,
   Text,
@@ -24,28 +26,29 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 
 import { useMusicPlayer } from '@/context/MusicPlayerContext'
-import { useFavorites } from '@/hooks/useFavorites'
+import { useLikedSongs } from '@/hooks/useLikedSongs'
 import { usePlaylists } from '@/hooks/usePlaylists'
 import { useNotifications } from '@/hooks/useNotifications'
 import { PlaylistPickerModal } from '@/components/PlaylistPickerModal'
 import { EmptyState } from '@/components/EmptyState'
 import { REMINDER_OPTIONS } from '@/utils/reminderOptions'
 import { colors } from '@/constants/token'
-import { PlaylistSong } from '@/types'
+import { LikedSong, PlaylistSong } from '@/types'
 
-const { width: SCREEN_W } = Dimensions.get('window')
-const COVER_SIZE = SCREEN_W - 72
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window')
+// Capa ocupa ~55% da altura útil da tela (área principal/visual da tela)
+const COVER_SIZE = Math.min(SCREEN_W - 64, SCREEN_H * 0.55)
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatTime(seconds: number): string {
-  if (!seconds || isNaN(seconds)) return '0:00'
+  if (!seconds || isNaN(seconds) || seconds < 0) return '0:00'
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function NowPlayingScreen() {
   const {
@@ -59,22 +62,33 @@ export default function NowPlayingScreen() {
     seekTo,
   } = useMusicPlayer()
 
-  const { isFavorite, toggleFavorite } = useFavorites()
+  const { isLiked, toggleLike } = useLikedSongs()
   const { playlists, createPlaylist, addSongToPlaylist } = usePlaylists()
   const { hasReminder, scheduleReminder, cancelReminder } = useNotifications()
 
   const [playlistModal, setPlaylistModal] = useState(false)
 
-  // Animação de escala da capa ao trocar play/pause
+  // ── Animação da capa: encolhe quando pausado (igual ao Apple Music) ────────
   const coverScale = useRef(new Animated.Value(1)).current
+
+  useEffect(() => {
+    Animated.spring(coverScale, {
+      toValue: isPlaying ? 1 : 0.88,
+      useNativeDriver: true,
+      bounciness: 6,
+      speed: 5,
+    }).start()
+  }, [isPlaying, coverScale])
 
   // ── Sem faixa ativa ───────────────────────────────────────────────────────
   if (!nowPlaying) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        <CloseButton />
+        <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn} hitSlop={12}>
+          <Ionicons name="chevron-down" size={28} color={colors.text} />
+        </TouchableOpacity>
         <EmptyState
-          message="Nenhuma música em reprodução.\nToque em uma faixa para começar."
+          message={'Nenhuma música em reprodução.\nToque em uma faixa para começar.'}
           icon="musical-note-outline"
         />
       </SafeAreaView>
@@ -82,35 +96,33 @@ export default function NowPlayingScreen() {
   }
 
   const { track, album } = nowPlaying
-  const favored = isFavorite(album.idAlbum)
+  const liked = isLiked(track.idTrack)
   const reminded = hasReminder(album.idAlbum)
-  const progressRatio = duration > 0 ? progress / duration : 0
+  const progressRatio = duration > 0 ? Math.min(1, progress / duration) : 0
 
-  // ── Ações ─────────────────────────────────────────────────────────────────
-
-  function handleTogglePlay() {
-    // Animação de pulso na capa
+  // ── Curtir música (nível de faixa, não álbum) ─────────────────────────────
+  async function handleToggleLike() {
+    const song: LikedSong = {
+      songId: track.idTrack,
+      songName: track.strTrack,
+      artistName: album.strArtist,
+      albumId: album.idAlbum,
+      albumName: album.strAlbum,
+      albumCover: album.strAlbumThumb,
+      likedAt: new Date().toISOString(),
+    }
+    const added = await toggleLike(song)
+    // Pulso rápido no ícone
     Animated.sequence([
-      Animated.spring(coverScale, {
-        toValue: isPlaying ? 0.92 : 1,
-        useNativeDriver: true,
-        speed: 30,
-        bounciness: 6,
-      }),
+      Animated.spring(heartScale, { toValue: 1.4, useNativeDriver: true, speed: 50 }),
+      Animated.spring(heartScale, { toValue: 1, useNativeDriver: true, speed: 50 }),
     ]).start()
-    togglePlay()
+    if (added) Alert.alert('❤️ Curtida!', `"${track.strTrack}" adicionada às músicas curtidas.`)
   }
 
-  async function handleToggleFavorite() {
-    const added = await toggleFavorite(album)
-    Alert.alert(
-      added ? '❤️ Favoritado' : 'Removido dos favoritos',
-      added
-        ? `"${album.strAlbum}" adicionado aos favoritos.`
-        : `"${album.strAlbum}" removido dos favoritos.`
-    )
-  }
+  const heartScale = useRef(new Animated.Value(1)).current
 
+  // ── Lembrete ─────────────────────────────────────────────────────────────
   function handleReminderPress() {
     if (reminded) {
       Alert.alert(
@@ -123,7 +135,7 @@ export default function NowPlayingScreen() {
             style: 'destructive',
             onPress: async () => {
               await cancelReminder(album.idAlbum)
-              Alert.alert('Lembrete cancelado', `Lembrete de "${album.strAlbum}" removido.`)
+              Alert.alert('Cancelado', `Lembrete de "${album.strAlbum}" removido.`)
             },
           },
         ]
@@ -158,6 +170,7 @@ export default function NowPlayingScreen() {
     }
   }
 
+  // ── Playlist ──────────────────────────────────────────────────────────────
   async function handleSelectPlaylist(playlistId: string) {
     const song: PlaylistSong = {
       songId: track.idTrack,
@@ -187,23 +200,23 @@ export default function NowPlayingScreen() {
     Alert.alert('Criado! ✓', `Playlist "${pl.name}" criada com "${track.strTrack}".`)
   }
 
-  // ── Seek por toque na barra ───────────────────────────────────────────────
-  const progressBarRef = useRef<View>(null)
+  // ── Progress bar: onLayout + responder ───────────────────────────────────
+  const progressBarWidth = useRef(0)
 
-  function handleProgressPress(event: any) {
-    progressBarRef.current?.measure((_x, _y, width) => {
-      const ratio = event.nativeEvent.locationX / width
-      seekTo(ratio)
-    })
+  function clampedSeek(locationX: number) {
+    if (progressBarWidth.current <= 0) return
+    const ratio = Math.max(0, Math.min(1, locationX / progressBarWidth.current))
+    seekTo(ratio)
   }
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      {/* ── Header ── */}
+
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn} hitSlop={12}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn} hitSlop={12}>
           <Ionicons name="chevron-down" size={28} color={colors.text} />
         </TouchableOpacity>
 
@@ -214,62 +227,79 @@ export default function NowPlayingScreen() {
           </Text>
         </View>
 
-        {/* Botão playlist no header */}
         <TouchableOpacity
           onPress={() => setPlaylistModal(true)}
-          style={styles.closeBtn}
+          style={styles.headerBtn}
           hitSlop={12}
         >
           <Ionicons name="add-circle-outline" size={26} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
-      {/* ── Capa do Álbum ── */}
+      {/* ── Capa do álbum ──────────────────────────────────────────────────── */}
       <View style={styles.coverWrapper}>
         <Animated.View style={[styles.coverShadow, { transform: [{ scale: coverScale }] }]}>
           {album.strAlbumThumb ? (
-            <Image source={{ uri: album.strAlbumThumb }} style={styles.cover} />
+            <Image
+              source={{ uri: album.strAlbumThumb }}
+              style={styles.cover}
+              resizeMode="cover"
+            />
           ) : (
             <View style={[styles.cover, styles.coverFallback]}>
-              <Ionicons name="disc-outline" size={80} color={colors.primary} style={{ opacity: 0.4 }} />
+              <Ionicons
+                name="disc-outline"
+                size={80}
+                color={colors.primary}
+                style={{ opacity: 0.4 }}
+              />
             </View>
           )}
         </Animated.View>
       </View>
 
-      {/* ── Info da faixa + Favoritar ── */}
+      {/* ── Info da faixa + Curtir ─────────────────────────────────────────── */}
       <View style={styles.trackInfo}>
         <View style={styles.trackTextCol}>
           <Text style={styles.trackName} numberOfLines={1}>
             {track.strTrack}
           </Text>
-          <Pressable onPress={() => router.push(`/tabs/artists/${album.idArtist}`)}>
+          <Pressable
+            onPress={() => album.idArtist && router.push(`/tabs/artists/${album.idArtist}`)}
+            disabled={!album.idArtist}
+          >
             <Text style={styles.artistName} numberOfLines={1}>
               {album.strArtist}
             </Text>
           </Pressable>
         </View>
 
-        <TouchableOpacity onPress={handleToggleFavorite} hitSlop={8} activeOpacity={0.7}>
-          <Animated.View>
+        <TouchableOpacity onPress={handleToggleLike} hitSlop={10} activeOpacity={0.7}>
+          <Animated.View style={{ transform: [{ scale: heartScale }] }}>
             <Ionicons
-              name={favored ? 'heart' : 'heart-outline'}
+              name={liked ? 'heart' : 'heart-outline'}
               size={28}
-              color={favored ? '#E05A6A' : '#C0CAD8'}
+              color={liked ? '#E05A6A' : '#C0CAD8'}
             />
           </Animated.View>
         </TouchableOpacity>
       </View>
 
-      {/* ── Barra de progresso ── */}
+      {/* ── Barra de progresso ─────────────────────────────────────────────── */}
       <View style={styles.progressSection}>
-        <Pressable onPress={handleProgressPress}>
-          <View ref={progressBarRef} style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${progressRatio * 100}%` }]}>
-              <View style={styles.progressThumb} />
-            </View>
+        {/* Touch/drag via responder system — sem measure() async */}
+        <View
+          style={styles.progressTrack}
+          onLayout={(e) => { progressBarWidth.current = e.nativeEvent.layout.width }}
+          onStartShouldSetResponder={() => true}
+          onMoveShouldSetResponder={() => true}
+          onResponderGrant={(e) => clampedSeek(e.nativeEvent.locationX)}
+          onResponderMove={(e) => clampedSeek(e.nativeEvent.locationX)}
+        >
+          <View style={[styles.progressFill, { width: `${progressRatio * 100}%` }]}>
+            <View style={styles.progressThumb} />
           </View>
-        </Pressable>
+        </View>
 
         <View style={styles.timeRow}>
           <Text style={styles.timeText}>{formatTime(progress)}</Text>
@@ -277,46 +307,57 @@ export default function NowPlayingScreen() {
         </View>
       </View>
 
-      {/* ── Controles ── */}
+      {/* ── Controles de reprodução ────────────────────────────────────────── */}
       <View style={styles.controls}>
-        <TouchableOpacity onPress={previous} activeOpacity={0.7} hitSlop={8}>
+        <TouchableOpacity onPress={previous} activeOpacity={0.7} hitSlop={10}>
           <Ionicons name="play-skip-back" size={32} color={colors.text} />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={handleTogglePlay} activeOpacity={0.85} style={styles.playPauseBtn}>
+        <TouchableOpacity
+          onPress={togglePlay}
+          activeOpacity={0.85}
+          style={styles.playPauseBtn}
+        >
           <Ionicons
             name={isPlaying ? 'pause' : 'play'}
             size={34}
             color="#fff"
-            style={isPlaying ? {} : { marginLeft: 3 }}
+            style={isPlaying ? undefined : { marginLeft: 3 }}
           />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={next} activeOpacity={0.7} hitSlop={8}>
+        <TouchableOpacity onPress={next} activeOpacity={0.7} hitSlop={10}>
           <Ionicons name="play-skip-forward" size={32} color={colors.text} />
         </TouchableOpacity>
       </View>
 
-      {/* ── Ações secundárias ── */}
+      {/* ── Ações secundárias ─────────────────────────────────────────────── */}
       <View style={styles.actions}>
         <ActionChip
           icon={reminded ? 'notifications' : 'notifications-outline'}
           label={reminded ? 'Lembrete ativo' : 'Lembrar-me'}
           onPress={handleReminderPress}
           active={reminded}
-          activeColor={colors.primary}
         />
-
         <ActionChip
           icon="add-circle-outline"
           label="Playlist"
           onPress={() => setPlaylistModal(true)}
           active={false}
-          activeColor={colors.primary}
         />
       </View>
 
-      {/* ── Modal de Playlists ── */}
+      {/* ── Info do álbum (ano · gênero) ───────────────────────────────────── */}
+      <View style={styles.albumInfoRow}>
+        <Ionicons name="disc-outline" size={14} color={colors.textMuted} />
+        <Text style={styles.albumInfoText} numberOfLines={1}>
+          {album.strAlbum}
+          {album.intYearReleased ? ` · ${album.intYearReleased}` : ''}
+          {album.strGenre ? ` · ${album.strGenre}` : ''}
+        </Text>
+      </View>
+
+      {/* ── Modal de playlists ─────────────────────────────────────────────── */}
       <PlaylistPickerModal
         visible={playlistModal}
         playlists={playlists}
@@ -329,33 +370,27 @@ export default function NowPlayingScreen() {
   )
 }
 
-// ─── Subcomponentes ───────────────────────────────────────────────────────────
-
-function CloseButton() {
-  return (
-    <TouchableOpacity onPress={() => router.back()} style={styles.closeBtnStandalone} hitSlop={12}>
-      <Ionicons name="chevron-down" size={28} color={colors.text} />
-    </TouchableOpacity>
-  )
-}
+// ─── ActionChip ───────────────────────────────────────────────────────────────
 
 type ActionChipProps = {
   icon: keyof typeof Ionicons.glyphMap
   label: string
   onPress: () => void
   active: boolean
-  activeColor: string
 }
 
-function ActionChip({ icon, label, onPress, active, activeColor }: ActionChipProps) {
+function ActionChip({ icon, label, onPress, active }: ActionChipProps) {
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.7}
-      style={[styles.chip, active && { borderColor: activeColor + '60', backgroundColor: activeColor + '12' }]}
+      style={[
+        styles.chip,
+        active && { borderColor: `${colors.primary}60`, backgroundColor: `${colors.primary}12` },
+      ]}
     >
-      <Ionicons name={icon} size={18} color={active ? activeColor : colors.textMuted} />
-      <Text style={[styles.chipLabel, active && { color: activeColor }]}>{label}</Text>
+      <Ionicons name={icon} size={17} color={active ? colors.primary : colors.textMuted} />
+      <Text style={[styles.chipLabel, active && { color: colors.primary }]}>{label}</Text>
     </TouchableOpacity>
   )
 }
@@ -376,14 +411,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 4,
   },
-  closeBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  closeBtnStandalone: {
-    margin: 20,
+  headerBtn: {
     width: 40,
     height: 40,
     alignItems: 'center',
@@ -411,14 +439,14 @@ const styles = StyleSheet.create({
   // ── Capa
   coverWrapper: {
     alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 32,
+    marginTop: 20,
+    marginBottom: 28,
   },
   coverShadow: {
     shadowColor: '#5a7fc4',
     shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.32,
-    shadowRadius: 32,
+    shadowOpacity: 0.30,
+    shadowRadius: 28,
     elevation: 16,
     borderRadius: 20,
   },
@@ -433,25 +461,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // ── Track info
+  // ── Info da faixa
   trackInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 36,
-    marginBottom: 24,
+    marginBottom: 20,
     gap: 12,
   },
   trackTextCol: {
     flex: 1,
   },
   trackName: {
-    fontSize: 22,
+    fontSize: 21,
     fontWeight: '800',
     color: colors.text,
     marginBottom: 4,
   },
   artistName: {
-    fontSize: 16,
+    fontSize: 15,
     color: colors.primary,
     fontWeight: '500',
   },
@@ -459,31 +487,32 @@ const styles = StyleSheet.create({
   // ── Progresso
   progressSection: {
     paddingHorizontal: 36,
-    marginBottom: 32,
+    marginBottom: 28,
   },
   progressTrack: {
-    height: 4,
+    height: 5,
     backgroundColor: '#DDE5F5',
-    borderRadius: 2,
-    overflow: 'visible',
+    borderRadius: 3,
+    justifyContent: 'center',
   },
   progressFill: {
-    height: 4,
+    height: 5,
     backgroundColor: colors.primary,
-    borderRadius: 2,
+    borderRadius: 3,
     position: 'relative',
+    alignItems: 'flex-end',
     justifyContent: 'center',
   },
   progressThumb: {
     position: 'absolute',
-    right: -6,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    right: -7,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: colors.primary,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.45,
     shadowRadius: 4,
     elevation: 3,
   },
@@ -503,8 +532,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 40,
-    marginBottom: 36,
+    gap: 44,
+    marginBottom: 32,
     paddingHorizontal: 36,
   },
   playPauseBtn: {
@@ -516,25 +545,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.38,
     shadowRadius: 16,
     elevation: 8,
   },
 
-  // ── Ações secundárias
+  // ── Chips de ação
   actions: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 12,
     paddingHorizontal: 36,
+    marginBottom: 20,
     flexWrap: 'wrap',
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
     borderRadius: 24,
     borderWidth: 1,
     borderColor: '#DDE5F5',
@@ -544,5 +574,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.textMuted,
+  },
+
+  // ── Info do álbum
+  albumInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 36,
+  },
+  albumInfoText: {
+    fontSize: 12,
+    color: colors.textMuted,
+    fontWeight: '500',
+    flexShrink: 1,
+    textAlign: 'center',
   },
 })

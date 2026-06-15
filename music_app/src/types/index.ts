@@ -83,3 +83,14 @@ export interface AlbumReminder {
   artistName: string
   scheduledFor: string    // ISO string do momento agendado
 }
+
+/** Música curtida individualmente (diferente de álbum favoritado) */
+export interface LikedSong {
+  songId: string
+  songName: string
+  artistName: string
+  albumId: string
+  albumName: string
+  albumCover: string | null
+  likedAt: string
+}

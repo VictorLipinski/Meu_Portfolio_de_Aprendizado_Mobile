@@ -13,8 +13,16 @@ const PlaylistScreenLayout = () => {
           headerShadowVisible: false,
         }}
       >
-        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="index" options={{ title: '', headerShown: false, headerBackButtonDisplayMode: 'minimal' }} />
         <Stack.Screen name="[playlistId]" options={{ headerShown: true }} />
+        <Stack.Screen
+          name="search"
+          options={{
+            title: 'Buscar Música',
+            headerShown: true,
+            animation: 'slide_from_right',
+          }}
+        />
       </Stack>
     </View>
   )

@@ -10,9 +10,11 @@ NativeStackNavigationOptions = {
         color: colors.text
     },
     headerTintColor: colors.text,
-    headerTransparent: true,
-    headerBlurEffect: "prominent",
-    headerShadowVisible: false,
+    headerTranslucent: true,
+    headerStyle: {
+        blurEffect: "prominent",
+    },
+    headerHideShadow: true,
 
     
 }

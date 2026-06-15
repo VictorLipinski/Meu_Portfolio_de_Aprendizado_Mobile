@@ -6,9 +6,10 @@ type Props = {
   value: string
   onChangeText: (text: string) => void
   placeholder?: string
+  autoFocus?: boolean
 }
 
-export function SearchBar({ value, onChangeText, placeholder = 'Buscar...' }: Props) {
+export function SearchBar({ value, onChangeText, placeholder = 'Buscar...', autoFocus }: Props) {
   return (
     <View style={styles.container}>
       <Ionicons name="search" size={18} color={colors.textMuted} />
@@ -21,6 +22,7 @@ export function SearchBar({ value, onChangeText, placeholder = 'Buscar...' }: Pr
         autoCorrect={false}
         autoCapitalize="none"
         returnKeyType="search"
+        autoFocus={autoFocus}
       />
     </View>
   )

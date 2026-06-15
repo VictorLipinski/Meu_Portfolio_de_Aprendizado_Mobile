@@ -2,14 +2,14 @@
  * MiniPlayer
  * ──────────
  * Barra compacta exibida acima das tabs sempre que houver uma faixa ativa.
- * Toque abre a tela Now Playing (app/player/index).
+ * Toque na área principal → abre Now Playing.
+ * Controles: play/pause + próxima faixa.
  */
 
 import { useRef } from 'react'
 import {
   Animated,
   Image,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -22,7 +22,7 @@ import { useMusicPlayer } from '@/context/MusicPlayerContext'
 import { colors } from '@/constants/token'
 
 export function MiniPlayer() {
-  const { nowPlaying, isPlaying, togglePlay, duration, progress } = useMusicPlayer()
+  const { nowPlaying, isPlaying, togglePlay, next, duration, progress } = useMusicPlayer()
 
   const pressScale = useRef(new Animated.Value(1)).current
 
@@ -34,7 +34,6 @@ export function MiniPlayer() {
   function handlePressIn() {
     Animated.spring(pressScale, { toValue: 0.97, useNativeDriver: true, speed: 50 }).start()
   }
-
   function handlePressOut() {
     Animated.spring(pressScale, { toValue: 1, useNativeDriver: true, speed: 50 }).start()
   }
@@ -48,7 +47,7 @@ export function MiniPlayer() {
       <Animated.View style={[styles.container, { transform: [{ scale: pressScale }] }]}>
         {/* Barra de progresso no topo */}
         <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${progressRatio * 100}%` as any }]} />
+          <View style={[styles.progressFill, { width: `${progressRatio * 100}%` }]} />
         </View>
 
         <View style={styles.inner}>
@@ -71,21 +70,27 @@ export function MiniPlayer() {
             </Text>
           </View>
 
-          {/* Controle play/pause */}
+          {/* Controles: play/pause + próxima */}
           <TouchableOpacity
-            onPress={(e) => {
-              e.stopPropagation()
-              togglePlay()
-            }}
+            onPress={(e) => { e.stopPropagation?.(); togglePlay() }}
             activeOpacity={0.7}
             hitSlop={8}
-            style={styles.playBtn}
+            style={styles.controlBtn}
           >
             <Ionicons
               name={isPlaying ? 'pause' : 'play'}
               size={26}
               color={colors.text}
             />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={(e) => { e.stopPropagation?.(); next() }}
+            activeOpacity={0.7}
+            hitSlop={8}
+            style={styles.controlBtn}
+          >
+            <Ionicons name="play-skip-forward" size={22} color={colors.text} />
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -121,7 +126,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    gap: 12,
+    gap: 10,
   },
   cover: {
     width: 44,
@@ -146,7 +151,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 2,
   },
-  playBtn: {
+  controlBtn: {
     padding: 4,
   },
 })

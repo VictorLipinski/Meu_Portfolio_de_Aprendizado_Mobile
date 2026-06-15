@@ -13,7 +13,7 @@ const SongsScreenLayout = () => {
           headerShadowVisible: false,
         }}
       >
-        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="index" options={{ title: '', headerShown: false, headerBackButtonDisplayMode: 'minimal' }} />
         <Stack.Screen
           name="[albumId]"
           options={{ title: 'Álbum', headerShown: true }}
